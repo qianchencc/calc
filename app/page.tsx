@@ -40,13 +40,12 @@ function defaultTierDrafts(): TierDraft[] {
 }
 
 const MODELS: ModelOption[] = [
-  { id: "terra", label: "GPT-5.6 Terra", shortLabel: "Terra", factor: 2.555, low: 2.431, high: 2.726 },
-  { id: "sol", label: "GPT-5.6 Sol", shortLabel: "Sol", factor: 1.295, low: 1.217, high: 1.375 },
-  { id: "luna", label: "GPT-5.6 Luna", shortLabel: "Luna", factor: 5.009, low: 4.331, high: 5.647 },
-  { id: "gpt55", label: "GPT-5.5", shortLabel: "GPT-5.5", factor: 1.02, low: 0.934, high: 1.256 },
-  { id: "gpt54", label: "GPT-5.4", shortLabel: "GPT-5.4", factor: 1.513, low: 1.354, high: 1.767 },
-  { id: "mini", label: "GPT-5.4 Mini", shortLabel: "Mini", factor: 1.311, low: 1.249, high: 1.685 },
-  { id: "spark", label: "GPT-5.3 Codex Spark", shortLabel: "Spark", factor: 0.127, low: 0.121, high: 0.134 },
+  { id: "terra", label: "GPT-5.6 Terra", shortLabel: "Terra", factor: 3.43466, low: 3.34144, high: 3.51535 },
+  { id: "sol", label: "GPT-5.6 Sol", shortLabel: "Sol", factor: 3.16505, low: 3.02877, high: 3.25112 },
+  { id: "luna", label: "GPT-5.6 Luna", shortLabel: "Luna", factor: 13.09546, low: 3.32863, high: 14.16539 },
+  { id: "gpt55", label: "GPT-5.5", shortLabel: "GPT-5.5", factor: 2.64776, low: 2.54124, high: 2.75044 },
+  { id: "gpt54", label: "GPT-5.4", shortLabel: "GPT-5.4", factor: 5.58383, low: 5.12749, high: 5.92560 },
+  { id: "mini", label: "GPT-5.4 Mini", shortLabel: "Mini", factor: 4.63849, low: 2.46565, high: 12.43120 },
 ];
 
 const numberFormatter = new Intl.NumberFormat("zh-CN", {
@@ -144,10 +143,19 @@ export default function Home() {
   }, [pricingMode, singleMultiplierValue, stationBalance, normalizedTiers, tiersValid]);
 
   const activeTier = tiersValid ? findActiveTier(stationBalance, normalizedTiers) : 0;
-  const tokenM = result.capacity * selected.factor;
+  const tokenM = result.breakdown.reduce(
+    (total, part) => total + part.amount * selected.factor * 0.4 / part.multiplier,
+    0,
+  );
   const tokenB = tokenM / 1000;
-  const tokenLow = result.capacity * selected.low;
-  const tokenHigh = result.capacity * selected.high;
+  const tokenLow = result.breakdown.reduce(
+    (total, part) => total + part.amount * selected.low * 0.4 / part.multiplier,
+    0,
+  );
+  const tokenHigh = result.breakdown.reduce(
+    (total, part) => total + part.amount * selected.high * 0.4 / part.multiplier,
+    0,
+  );
   const inferredRechargeRate = amountValue > 0 ? stationBalance / amountValue : 0;
   const officialDirectCapacity = officialExchangeRateValue > 0
     ? amountValue / officialExchangeRateValue
@@ -312,7 +320,7 @@ export default function Home() {
           <div className="model-section">
             <div className="section-heading-row">
               <h2>选择 GPT 模型</h2>
-              <span>基于历史使用结构</span>
+              <span>基于近30天真实使用结构</span>
             </div>
             <div className="model-picker" role="group" aria-label="GPT模型">
               {MODELS.map((model) => (
@@ -327,7 +335,7 @@ export default function Home() {
                 </button>
               ))}
             </div>
-            <p className="model-help">模型系数来自历史请求中的输入、缓存读取与输出结构；它用于估算 Token，不参与上方官方容量倍数计算。</p>
+            <p className="model-help">以本站0.4倍率真实请求为基准，综合输入、缓存读取与输出结构，再按上方每个阶梯分别调整。免费模型不参与估算。</p>
           </div>
 
           <div className="token-result" aria-live="polite">
@@ -340,7 +348,7 @@ export default function Home() {
               <i aria-hidden="true" />
               <div>
                 <b>{tokenB.toFixed(3)}B</b>
-                <span>{numberFormatter.format(result.capacity)} × {selected.factor.toFixed(3)}M / 单位</span>
+                <span>0.4基准 {selected.factor.toFixed(4)}M / 站内余额，已逐档调整</span>
               </div>
             </div>
             <p className="range-note">按样本波动，约 {numberFormatter.format(tokenLow)}M–{numberFormatter.format(tokenHigh)}M</p>
@@ -456,9 +464,9 @@ export default function Home() {
         <div className="method-grid">
           <article><span>01</span><h3>充值与到账</h3><p>输入实际支付的人民币；高级模式可直接填写平台实际到账的站内余额。</p></article>
           <article><span>02</span><h3>官方直购基准</h3><p>支付人民币除以真实美元汇率，得到同样金额直接购买官方 API 的容量。</p></article>
-          <article><span>03</span><h3>本站容量倍数</h3><p>用本站标称官方容量除以官方直购容量，再换算为各 GPT 模型预计可用 Token。</p></article>
+          <article><span>03</span><h3>模型 Token 估算</h3><p>用0.4倍率真实使用样本拟合每单位余额的 Token，再按实际阶梯逐段调整。</p></article>
         </div>
-        <p className="disclaimer">本工具计算的是平台声明规则下的标称容量，不核验其他平台是否按声明规则真实扣费。Token 结果是历史样本估算，不是硬性保证。</p>
+        <p className="disclaimer">官方容量用于价格对照；Token 结果来自单一用户近30天的高缓存使用样本，是经验估算而非硬性保证。</p>
       </section>
 
       <footer>
