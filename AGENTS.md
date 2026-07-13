@@ -50,3 +50,17 @@ npm run build
 - GitHub Actions 通过后，由 Vercel 自动发布生产版本。
 - 发布后验证 [calc.qianc.ltd](https://calc.qianc.ltd) 为 HTTPS 200，并手测受影响路径。
 - 紧急 Vercel 回滚后，必须在 GitHub 做对应 revert，不能让线上长期偏离 `main`。
+
+## Agent skills
+
+### Issue tracker
+
+本仓库使用 GitHub Issues 跟踪规格与任务；外部 Pull Request 不作为 `/triage` 的请求入口。详见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+使用标准五状态标签：`needs-triage`、`needs-info`、`ready-for-agent`、`ready-for-human`、`wontfix`。详见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+本仓库采用单一上下文：领域词汇位于根目录 `CONTEXT.md`，架构决策位于 `docs/adr/`。详见 `docs/agents/domain.md`。
