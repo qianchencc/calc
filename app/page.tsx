@@ -23,14 +23,19 @@ type ModelOption = {
 
 const DEFAULT_TIERS: Tier[] = [
   { max: 30, multiplier: 0.4 },
-  { max: 100, multiplier: 0.36 },
-  { max: 150, multiplier: 0.32 },
-  { max: null, multiplier: 0.28 },
+  { max: 70, multiplier: 0.32 },
+  { max: 130, multiplier: 0.28 },
+  { max: null, multiplier: 0.24 },
 ];
 
 const DEFAULT_OFFICIAL_EXCHANGE_RATE = "6.7989";
 const OFFICIAL_EXCHANGE_RATE_DATE = "2026-07-10";
 const OFFICIAL_EXCHANGE_RATE_SOURCE = "https://www.pbc.gov.cn/zhengcehuobisi/125207/125217/125925/2026071009003741941/index.html";
+const DEFAULT_PLUS_PURCHASE_PRICE_RMB = "150";
+const PRO20X_WEEKLY_CAPACITY = 1700;
+const PRO_PLUS_USAGE_RATIO = 20;
+const WEEKS_PER_MONTH = 52 / 12;
+const PRO_PLAN_SOURCE = "https://help.openai.com/en/articles/9793128-what-is-chatgpt-pro";
 
 function defaultTierDrafts(): TierDraft[] {
   return DEFAULT_TIERS.map((tier) => ({
@@ -110,12 +115,14 @@ export default function Home() {
   const [officialExchangeRate, setOfficialExchangeRate] = useState(DEFAULT_OFFICIAL_EXCHANGE_RATE);
   const [singleMultiplier, setSingleMultiplier] = useState("0.4");
   const [tiers, setTiers] = useState<TierDraft[]>(defaultTierDrafts);
+  const [plusPurchasePrice, setPlusPurchasePrice] = useState(DEFAULT_PLUS_PURCHASE_PRICE_RMB);
 
   const selected = MODELS.find((model) => model.id === selectedModel) ?? MODELS[0];
   const amountValue = safeNumber(amount);
   const stationBalance = safeNumber(balanceOverride === null ? amount : balanceOverride);
   const officialExchangeRateValue = safeNumber(officialExchangeRate);
   const singleMultiplierValue = safeNumber(singleMultiplier);
+  const plusPurchasePriceValue = safeNumber(plusPurchasePrice);
   const normalizedTiers = useMemo(() => normalizeTiers(tiers), [tiers]);
 
   const tiersValid = tiers.every((tier, index) => {
@@ -166,6 +173,16 @@ export default function Home() {
   const effectiveUnitPrice = result.capacity > 0
     ? amountValue / result.capacity
     : 0;
+  const plusMonthlyCapacity = PRO20X_WEEKLY_CAPACITY / PRO_PLUS_USAGE_RATIO * WEEKS_PER_MONTH;
+  const plusSameBudgetCapacity = plusPurchasePriceValue > 0
+    ? plusMonthlyCapacity * amountValue / plusPurchasePriceValue
+    : 0;
+  const plusPlanEquivalent = plusMonthlyCapacity > 0
+    ? result.capacity / plusMonthlyCapacity
+    : 0;
+  const plusValueMultiple = plusSameBudgetCapacity > 0
+    ? result.capacity / plusSameBudgetCapacity
+    : 0;
   const capacityFormula = result.breakdown.length > 0
     ? result.breakdown.map((part) => `${numberFormatter.format(part.amount)} ÷ ${part.multiplier.toFixed(2)}`).join(" + ")
     : "0";
@@ -174,6 +191,7 @@ export default function Home() {
     || balanceOverride !== null
     || officialExchangeRate !== DEFAULT_OFFICIAL_EXCHANGE_RATE
     || JSON.stringify(tiers) !== JSON.stringify(defaultTierDrafts());
+  const customPlusBenchmark = plusPurchasePrice !== DEFAULT_PLUS_PURCHASE_PRICE_RMB;
 
   function updateTier(index: number, key: "max" | "multiplier", value: string) {
     setTiers((current) => current.map((tier, tierIndex) => {
@@ -188,6 +206,7 @@ export default function Home() {
     setOfficialExchangeRate(DEFAULT_OFFICIAL_EXCHANGE_RATE);
     setSingleMultiplier("0.4");
     setTiers(defaultTierDrafts());
+    setPlusPurchasePrice(DEFAULT_PLUS_PURCHASE_PRICE_RMB);
   }
 
   return (
@@ -308,9 +327,27 @@ export default function Home() {
             </div>
             <i aria-hidden="true">VS</i>
             <div className="comparison-result">
-              <span>本站相对官方</span>
+              <span>本站相对官方 API</span>
               <strong>{officialCapacityMultiple > 0 ? `${numberFormatter.format(officialCapacityMultiple)}× 容量` : "—"}</strong>
               <small>{effectiveUnitPrice > 0 ? `有效售价 ¥${effectiveUnitPrice.toFixed(3)} / 官方标价 $1` : ""}</small>
+            </div>
+            <div className="plus-inline-comparison">
+              <div className="plus-inline-metrics">
+                <div>
+                  <span>同样预算相对官方 Plus</span>
+                  <strong>{plusValueMultiple > 0 ? `${numberFormatter.format(plusValueMultiple)}× 容量性价比` : "—"}</strong>
+                </div>
+                <div>
+                  <span>相当于单个官方 Plus</span>
+                  <strong>{plusPlanEquivalent > 0 ? `${numberFormatter.format(plusPlanEquivalent)}× 月度调用容量` : "—"}</strong>
+                </div>
+              </div>
+              <small>
+                {plusValueMultiple > 0
+                  ? `Plus ¥${numberFormatter.format(plusPurchasePriceValue)}/月；本站 ${numberFormatter.format(result.capacity)} vs Plus 同预算折算 ${numberFormatter.format(plusSameBudgetCapacity)} 标价 $`
+                  : "请在高级模式填写有效的 Plus 购买价格"}
+                <a href={PRO_PLAN_SOURCE} target="_blank" rel="noreferrer">20×关系来源 ↗</a>
+              </small>
             </div>
             <a href={OFFICIAL_EXCHANGE_RATE_SOURCE} target="_blank" rel="noreferrer">
               汇率来源：中国人民银行 · 中国外汇交易中心，{OFFICIAL_EXCHANGE_RATE_DATE} ↗
@@ -422,6 +459,31 @@ export default function Home() {
                 </small>
               </div>
 
+              <div className="advanced-subsection-heading">
+                <div>
+                  <strong>Plus 对照假设</strong>
+                  <small>只影响 Plus 月度对照，不改变本站余额、阶梯或 Token 计算。</small>
+                </div>
+                <span>{customPlusBenchmark ? "已自定义" : "默认基准"}</span>
+              </div>
+
+              <div className="advanced-fields">
+                <label htmlFor="plus-purchase-price">
+                  <span>Plus 实际购买价格（人民币 / 月）</span>
+                  <input
+                    id="plus-purchase-price"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={plusPurchasePrice}
+                    onChange={(event) => setPlusPurchasePrice(event.target.value)}
+                    aria-label="Plus实际购买价格"
+                    aria-describedby="plus-purchase-price-help"
+                  />
+                  <small id="plus-purchase-price-help">默认按国内用户常见总支出 ¥150；可填写你自己的实际购买价格。</small>
+                </label>
+              </div>
+
               {pricingMode === "single" ? (
                 <div className="advanced-fields">
                   <label htmlFor="single-multiplier">
@@ -466,7 +528,7 @@ export default function Home() {
           <article><span>02</span><h3>官方直购基准</h3><p>支付人民币除以真实美元汇率，得到同样金额直接购买官方 API 的容量。</p></article>
           <article><span>03</span><h3>模型 Token 估算</h3><p>用0.4倍率真实使用样本拟合每单位余额的 Token，再按实际阶梯逐段调整。</p></article>
         </div>
-        <p className="disclaimer">官方容量用于价格对照；Token 结果来自单一用户近30天的高缓存使用样本，是经验估算而非硬性保证。</p>
+        <p className="disclaimer">官方 API 容量用于价格对照；黑色区域中的 Plus 对照同时显示“同预算每元容量”和“相当于一份固定 Plus 月额度”两种口径。前者按当前预算等比例折算，但 Plus 本身不能按比例购买。基准来自 Pro 20× 实测容量与官方20倍关系；Token 结果来自单一用户近30天的高缓存使用样本，均为经验估算而非硬性保证。</p>
       </section>
 
       <footer>
