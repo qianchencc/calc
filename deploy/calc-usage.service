@@ -1,0 +1,10 @@
+[Unit]
+Description=Publish calculator tier usage snapshot
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/calc-usage/export_usage.py --output-dir /opt/sub2api-deploy/data/pages/assets/calc-private
+TimeoutStartSec=120
+UMask=0022

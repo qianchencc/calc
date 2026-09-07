@@ -6,6 +6,8 @@
 
 ## 计算口径
 
+Token 估算现按真实阶梯分组的总 Token / 实际扣费计算，每日更新，加入 GPT-6 Astra 和 GPT-5.6。各档样本不足时明确提示，不外推倍率。统计方案见 [ADR-0004](docs/adr/0004-direct-tier-usage-snapshots.md)，运维见 [deploy/README.md](deploy/README.md)。
+
 计算器明确区分三种单位：
 
 - 人民币：用户实际支付金额。

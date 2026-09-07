@@ -2,6 +2,16 @@
 
 本文是 `qianchencc/calc` 的维护基线。修改计算逻辑、默认数据、部署配置或域名之前，必须先阅读并遵守本文。
 
+## 2026-09-07 统计方案修订（优先于下方历史拟合说明）
+
+站点所有者已采用 [ADR-0004](docs/adr/0004-direct-tier-usage-snapshots.md)。当前生产 Token 计算使用每个指定阶梯组的总 Token / 实际扣费，直接乘该档余额；不再做0.4或倍率中性归一化。下方0.4系数、Redis控制面、单用户样本和421.97M回归值仅为历史背景，不能用于现行实现。价格对照、汇率及阶梯边界规则继续有效。
+
+代码结构：app/page.tsx 服务端读取，app/calculator.tsx 保留原交互，lib/usage.ts 校验及估算，lib/usage-server.ts 鉴权请求及缓存，scripts/export_usage.py 聚合，deploy/README.md 运维。模型和有效快照来自服务器每日聚合，不来自前端常量。GitHub仍为源码事实来源。
+
+现行 Token 回归：100余额按30/40/30分档，测试系数2M/3M/4M => 300M；缺少任一所需档位 => 不可估算。真实快照结果每日变化，必须按对应批次复核。npm test 和 Python unittest 已加入CI。
+
+运行时只需 Vercel 服务端 CALC_USAGE_KEY，独立于中转 API/管理员密钥。浏览器不接触密钥或实际扣费总额。无新增 Redis 或注册管理服务。原始聚合CSV保留在服务器私有目录，不提交公开GitHub。
+
 ## 1. 生产身份与唯一事实来源
 
 - GitHub 仓库 `qianchencc/calc` 是代码、数据结构、初始化种子和灾备基线的唯一事实来源。动态控制面上线后，运行时模型注册表与生效拟合以Upstash Redis为事实来源，边界见ADR-0001。
