@@ -15,4 +15,4 @@ Snapshots contain per-sample window_start and exclusive window_end. The model li
 
 Rollback: revert the calculator commit; disable calc-usage.timer and restore the backed-up Nginx config after nginx -t. Preserve snapshots and key for recovery. Do not remove unrelated server assets or containers.
 
-The standalone exporter uses no pip dependencies. Local verification: npm test; python3 -m unittest discover -s tests -p 'test_*.py'; npm run typecheck; npm run build.
+The standalone exporter uses no pip dependencies. Local verification: npm test; python3 -m unittest discover -s tests -p 'test_*.py'; npm run typecheck; npm run build with CALC_USAGE_KEY set. GitHub CI compiles without prerendering so it needs no production secret; Vercel Preview and Production run the full build and authenticated prerender. A failed prerender blocks deployment; failed ISR regeneration retains the prior page. Data and page caches refresh on access, so a new daily snapshot can take two hourly cache cycles to appear.

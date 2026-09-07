@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { estimateTokens, type UsageData } from "../lib/usage";
+import { useEffect, useMemo, useState } from "react";
+import { estimateTokens, shanghaiDate, type UsageData } from "../lib/usage";
 
 type Tier = {
   max: number | null;
@@ -90,6 +90,13 @@ function findActiveTier(spend: number, tiers: Tier[]) {
 }
 
 export default function Calculator({ usage, today }: { usage: UsageData | null; today: string }) {
+  const [currentDate, setCurrentDate] = useState(today);
+  useEffect(() => {
+    const refresh = () => setCurrentDate(shanghaiDate());
+    refresh();
+    const timer = setInterval(refresh, 60000);
+    return () => clearInterval(timer);
+  }, []);
   const [amount, setAmount] = useState("100");
   const [selectedModel, setSelectedModel] = useState("gpt-5.6-terra");
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -137,7 +144,7 @@ export default function Calculator({ usage, today }: { usage: UsageData | null; 
   const estimate = estimateTokens(result.breakdown, selected?.samples ?? []);
   const tokenM = !selected || (pricingMode === "tiered" ? !tiersValid : singleMultiplierValue <= 0)
     ? null : estimate.tokenM;
-  const stale = estimate.used.some((row) => Date.parse(today) - Date.parse(row.windowEnd) > 2 * 86400000);
+  const stale = estimate.used.some((row) => Date.parse(currentDate) - Date.parse(row.windowEnd) > 2 * 86400000);
   const limited = estimate.used.some((row) => row.requests < 100 || row.days < 7);
   const inferredRechargeRate = amountValue > 0 ? stationBalance / amountValue : 0;
   const officialDirectCapacity = officialExchangeRateValue > 0
@@ -340,8 +347,8 @@ export default function Calculator({ usage, today }: { usage: UsageData | null; 
                 <button
                   type="button"
                   key={model.id}
-                  className={model.id === selectedModel ? "selected" : ""}
-                  aria-pressed={model.id === selectedModel}
+                  className={model.id === selected?.id ? "selected" : ""}
+                  aria-pressed={model.id === selected?.id}
                   onClick={() => setSelectedModel(model.id)}
                 >
                   {model.label}

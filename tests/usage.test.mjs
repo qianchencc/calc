@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { estimateTokens, parseUsageSnapshot } from '../lib/usage.ts';
+import { estimateTokens, parseUsageSnapshot, shanghaiDate } from '../lib/usage.ts';
+
+test('sample freshness follows Shanghai midnight, not UTC midnight', () => {
+  assert.equal(shanghaiDate(new Date('2026-09-07T16:00:00Z')), '2026-09-08');
+});
 
 test('100 balance uses 30 at 2M, 40 at 3M and 30 at 4M: 300M total', () => {
   const samples = [0.4, 0.32, 0.28].map((multiplier, i) => ({

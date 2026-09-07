@@ -9,6 +9,10 @@ export type TierSample = {
 export type UsageModel = { id: string; label: string; samples: TierSample[] };
 export type UsageData = { generatedAt: string; models: UsageModel[] };
 
+export function shanghaiDate(date = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(date);
+}
+
 export function estimateTokens(parts: { amount: number; multiplier: number }[], samples: TierSample[]) {
   let tokenM = 0;
   const used: TierSample[] = [];
