@@ -75,5 +75,6 @@ export function parseUsageSnapshot(value: unknown): UsageData {
     });
     return { id: model.id, label: model.label, samples, pooledYield: actualCost > 0 ? totalTokens / 1e6 / actualCost : 0 };
   });
-  return { generatedAt: snapshot.generated_at, models: models.filter((model) => model.id !== 'gpt-5.4' && model.samples.length > 0) };
+  const visibleModels = ['gpt-6-astra', 'gpt-5.6-terra', 'gpt-5.6-sol', 'gpt-5.6-luna'];
+  return { generatedAt: snapshot.generated_at, models: models.filter((model) => visibleModels.includes(model.id) && model.samples.length > 0) };
 }

@@ -202,6 +202,9 @@ export default function Calculator({ usage, today }: { usage: UsageData | null; 
           <a className="nav-link active" href="#calculator">计算器</a>
           <span className="nav-dot" aria-hidden="true">•</span>
           <a className="nav-link" href="#method">说明</a>
+          <a className="back-link" href="https://libre.qianc.ltd" target="_blank" rel="noreferrer">
+            前往尘Chat <span aria-hidden="true">↗</span>
+          </a>
           <a className="back-link" href="https://proxy.qianc.ltd" target="_blank" rel="noreferrer">
             访问中转站 <span aria-hidden="true">↗</span>
           </a>
