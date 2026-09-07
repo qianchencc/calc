@@ -39,14 +39,14 @@ test('snapshot exposes direct yield without passing billing totals to browser', 
   assert.throws(() => parseUsageSnapshot(snapshot));
 });
 
-test('pooled fallback divides aggregate totals, and only GPT-5.4 is hidden', () => {
+test('calculator exposes only Astra, Terra, Sol and Luna, preserving pooled yields', () => {
   const samples = [
     {multiplier:0.4,total_tokens:6000000,actual_cost:2,requests:20,days:2,window_end:'2026-09-07'},
     {multiplier:0.32,total_tokens:4000000,actual_cost:2,requests:20,days:2,window_end:'2026-09-07'},
   ];
-  const result = parseUsageSnapshot({version:1,generated_at:'2026-09-07T03:15:00+08:00',models:[
-    {id:'gpt-5.4',label:'GPT-5.4',samples}, {id:'gpt-5.4-mini',label:'Mini',samples},
-  ]});
-  assert.deepEqual(result.models.map(m=>m.id), ['gpt-5.4-mini']);
+  const ids = ['gpt-5.4','gpt-5.4-mini','gpt-5.5','gpt-5.6','gpt-6-astra','gpt-5.6-terra','gpt-5.6-sol','gpt-5.6-luna'];
+  const result = parseUsageSnapshot({version:1,generated_at:'2026-09-07T03:15:00+08:00',
+    models: ids.map(id => ({id,label:id,samples}))});
+  assert.deepEqual(result.models.map(m=>m.id), ['gpt-6-astra','gpt-5.6-terra','gpt-5.6-sol','gpt-5.6-luna']);
   assert.equal(result.models[0].pooledYield,2.5);
 });
