@@ -8,7 +8,7 @@
 
 代码结构：app/page.tsx 服务端读取，app/calculator.tsx 保留原交互，lib/usage.ts 校验及估算，lib/usage-server.ts 鉴权请求及缓存，scripts/export_usage.py 聚合，deploy/README.md 运维。模型和有效快照来自服务器每日聚合，不来自前端常量。GitHub仍为源码事实来源。
 
-现行 Token 回归：100余额按30/40/30分档，测试系数2M/3M/4M => 300M；缺少任一所需档位 => 不可估算。真实快照结果每日变化，必须按对应批次复核。npm test 和 Python unittest 已加入CI。
+现行 Token 回归：100余额按30/40/30分档，测试系数2M/3M/4M => 300M；缺少所需档位时使用同模型有效档位的汇总比例，并标记借用。真实快照结果每日变化，必须按对应批次复核。npm test 和 Python unittest 已加入CI。
 
 运行时只需 Vercel 服务端 CALC_USAGE_KEY，独立于中转 API/管理员密钥。浏览器不接触密钥或实际扣费总额。无新增 Redis 或注册管理服务。原始聚合CSV保留在服务器私有目录，不提交公开GitHub。
 

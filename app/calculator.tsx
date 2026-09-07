@@ -141,7 +141,7 @@ export default function Calculator({ usage, today }: { usage: UsageData | null; 
   }, [pricingMode, singleMultiplierValue, stationBalance, normalizedTiers, tiersValid]);
 
   const activeTier = tiersValid ? findActiveTier(stationBalance, normalizedTiers) : 0;
-  const estimate = estimateTokens(result.breakdown, selected?.samples ?? []);
+  const estimate = estimateTokens(result.breakdown, selected?.samples ?? [], selected?.pooledYield);
   const tokenM = !selected || (pricingMode === "tiered" ? !tiersValid : singleMultiplierValue <= 0)
     ? null : estimate.tokenM;
   const stale = estimate.used.some((row) => Date.parse(currentDate) - Date.parse(row.windowEnd) > 2 * 86400000);
@@ -225,7 +225,7 @@ export default function Calculator({ usage, today }: { usage: UsageData | null; 
 
         <section className="workbench" aria-label="额度与Token计算器">
           <div className="amount-section">
-            <label htmlFor="recharge">充值金额</label>
+            <label htmlFor="recharge">充值金额 <small>（输入可编辑 ↓）</small></label>
             <div className="amount-input-wrap">
               <span className="currency">¥</span>
               <input
@@ -337,6 +337,10 @@ export default function Calculator({ usage, today }: { usage: UsageData | null; 
             </a>
           </div>
 
+          <p className="comparison-summary" aria-live="polite">
+            {amountValue.toLocaleString("zh-CN")}元人民币约相当于官方{numberFormatter.format(result.capacity)}美元的用量，相当于{numberFormatter.format(plusPlanEquivalent)}倍官方 Plus 的月额度；Plus 一个月约{plusPurchasePriceValue.toLocaleString("zh-CN")}元（按当前对照假设）。
+          </p>
+
           <div className="model-section">
             <div className="section-heading-row">
               <h2>选择 GPT 模型</h2>
@@ -355,7 +359,7 @@ export default function Calculator({ usage, today }: { usage: UsageData | null; 
                 </button>
               ))}
             </div>
-            <p className="model-help">按各阶梯分组的总 Token ÷ 实际扣费估算，包含输入、输出和缓存。各档分别统计，不额外换算倍率；免费模型不参与。</p>
+            <p className="model-help">按各阶梯分组的总 Token ÷ 实际扣费估算，包含输入、输出和缓存。缺少对应档位时，借用该模型其他阶梯的汇总比例作粗略参考；免费模型不参与。</p>
           </div>
 
           <div className="token-result" aria-live="polite">
@@ -371,7 +375,7 @@ export default function Calculator({ usage, today }: { usage: UsageData | null; 
                 <span>{tokenM === null ? estimate.missing.length ? `缺少 ×${estimate.missing.join("、×")} 档有效样本` : "统计不可用或计费参数无效" : "按各档真实使用比例分段估算"}</span>
               </div>
             </div>
-            <p className="range-note">{stale ? "部分样本已过期，沿用上次有效数据。" : ""}{limited ? "部分阶梯样本较少，仅供粗略参考。" : "实际可用量会随缓存命中和输出比例变化。"}</p>
+            <p className="range-note">{stale ? "部分样本已过期，沿用上次有效数据。" : ""}{estimate.borrowed.length > 0 ? `×${estimate.borrowed.join("、×")} 档借用该模型其他阶梯的汇总比例。` : ""}{limited ? "部分阶梯样本较少，仅供粗略参考。" : "实际可用量会随缓存命中和输出比例变化。"}</p>
             <details className="range-note">
               <summary>各阶梯样本</summary>
               {(selected?.samples ?? []).map((row) => (
@@ -517,7 +521,7 @@ export default function Calculator({ usage, today }: { usage: UsageData | null; 
           <article><span>02</span><h3>官方直购基准</h3><p>支付人民币除以真实美元汇率，得到同样金额直接购买官方 API 的容量。</p></article>
           <article><span>03</span><h3>模型 Token 估算</h3><p>用各阶梯真实样本的总 Token 除以实际扣费，再乘以该档余额，逐段相加。</p></article>
         </div>
-        <p className="disclaimer">官方 API 容量和 Plus 对照保留原有价格假设，独立于 Token 估算。Token 样本来自本站指定阶梯分组此前30个完整自然日的付费请求，以总量汇总，可能受高用量用户影响。按本月从零累计消费估算；自定义倍率没有对应样本时不提供 Token 估算。结果仅供参考，并非额度承诺。</p>
+        <p className="disclaimer">官方 API 容量和 Plus 对照保留原有价格假设，独立于 Token 估算。Token 样本来自本站指定阶梯分组此前30个完整自然日的付费请求，以总量汇总，可能受高用量用户影响。按本月从零累计消费估算；缺样本或自定义倍率使用同模型其他阶梯的汇总比例，不代表该倍率下的实测结果。结果仅供参考，并非额度承诺。</p>
       </section>
 
       <footer>

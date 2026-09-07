@@ -10,4 +10,4 @@ export const getUsageData = unstable_cache(async () => {
   });
   if (!response.ok) throw new Error(`Usage source HTTP ${response.status}`);
   return parseUsageSnapshot(await response.json());
-}, ['tier-usage-v1'], { revalidate: 3600 });
+}, ['tier-usage-v2-pooled'], { revalidate: 3600 });
