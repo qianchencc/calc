@@ -67,10 +67,10 @@ def query(start, end):
       SELECT '{start}'::timestamp AT TIME ZONE 'Asia/Shanghai' AS lo,
              '{end}'::timestamp AT TIME ZONE 'Asia/Shanghai' AS hi
     ), requests AS (
-      SELECT DISTINCT ON (u.user_id, COALESCE(NULLIF(u.request_id,''), 'row:' || u.id::text)) u.*
+      SELECT DISTINCT ON (u.api_key_id, COALESCE(NULLIF(u.request_id,''), 'row:' || u.id::text)) u.*
       FROM usage_logs u, bounds b
       WHERE u.created_at >= b.lo AND u.created_at < b.hi AND u.group_id IN (2,6,7,8)
-      ORDER BY u.user_id, COALESCE(NULLIF(u.request_id,''), 'row:' || u.id::text), u.id DESC
+      ORDER BY u.api_key_id, COALESCE(NULLIF(u.request_id,''), 'row:' || u.id::text), u.id DESC
     ), eligible AS (
       SELECT *, regexp_replace(model, '-proxy$', '') AS canonical_model
       FROM requests WHERE actual_cost > 0 AND input_tokens >= 0 AND output_tokens >= 0
