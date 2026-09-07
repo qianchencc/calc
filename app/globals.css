@@ -674,6 +674,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .model-picker button:nth-child(4n) { border-right: 0; }
+.model-picker button:last-child:nth-child(odd) { grid-column: span 2; border-right: 0; }
 .model-picker button:nth-last-child(-n+3) { border-bottom: 0; }
 .model-picker button:hover { background: var(--accent-soft); }
 .model-picker button:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
