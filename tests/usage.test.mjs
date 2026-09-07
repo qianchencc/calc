@@ -19,10 +19,10 @@ test('completely absent model data is not fabricated', () => {
   assert.equal(estimateTokens([], []).tokenM, 0);
 });
 
-test('missing tier borrows the model pooled yield without scaling the multiplier', () => {
+test('missing tier scales a neutral yield while exact-tier samples stay unchanged', () => {
   const result = estimateTokens([{ amount: 30, multiplier: 0.4 }, { amount: 70, multiplier: 0.28 }],
-    [{multiplier: 0.4, tokenMPerBalance: 2, requests: 100, days: 10, windowEnd: '2026-09-07'}], 3);
-  assert.equal(result.tokenM, 270);
+    [{multiplier: 0.4, tokenMPerBalance: 2, requests: 100, days: 10, windowEnd: '2026-09-07'}], 0.8);
+  assert.equal(result.tokenM, 260);
   assert.deepEqual(result.borrowed, [0.28]);
 });
 
@@ -33,7 +33,8 @@ test('snapshot exposes direct yield without passing billing totals to browser', 
   ]};
   const parsed = parseUsageSnapshot(snapshot);
   assert.equal(parsed.models[0].samples[0].tokenMPerBalance, 3);
-  assert.equal(parsed.models[0].pooledYield, 3);
+  assert.equal(parsed.models[0].pooledNeutralYield, 1.2);
+  assert.equal(estimateTokens([{amount:10,multiplier:0.32}], parsed.models[0].samples, parsed.models[0].pooledNeutralYield).tokenM, 37.5);
   assert.equal(JSON.stringify(parsed).includes('actual_cost'), false);
   snapshot.models[0].samples[0].actual_cost = 0;
   assert.throws(() => parseUsageSnapshot(snapshot));
@@ -48,5 +49,6 @@ test('calculator exposes only Astra, Terra, Sol and Luna, preserving pooled yiel
   const result = parseUsageSnapshot({version:1,generated_at:'2026-09-07T03:15:00+08:00',
     models: ids.map(id => ({id,label:id,samples}))});
   assert.deepEqual(result.models.map(m=>m.id), ['gpt-6-astra','gpt-5.6-terra','gpt-5.6-sol','gpt-5.6-luna']);
-  assert.equal(result.models[0].pooledYield,2.5);
+  assert.equal(result.models[0].pooledNeutralYield,10 / 11.25);
+  assert.equal(estimateTokens([{amount:9,multiplier:0.2}], result.models[0].samples, result.models[0].pooledNeutralYield).tokenM,40);
 });
