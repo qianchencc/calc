@@ -6,7 +6,7 @@
 
 ## 计算口径
 
-Token 估算现按真实阶梯分组的总 Token / 实际扣费计算，每日更新，选择器仅展示 Astra、Terra、Sol、Luna。缺档位时借用同模型各有效档位汇总比例，明确标记粗略参考，不额外换算倍率。统计方案见 [ADR-0004](docs/adr/0004-direct-tier-usage-snapshots.md)，运维见 [deploy/README.md](deploy/README.md)。
+Token 估算现按真实阶梯分组的总 Token / 实际扣费计算，每日更新，选择器仅展示 Astra、Terra、Sol、Luna。有本档样本直接使用；缺档位时借用同模型有效样本，先消除原倍率影响，再按目标倍率换算，标记为粗略参考。统计方案见 [ADR-0004](docs/adr/0004-direct-tier-usage-snapshots.md)，运维见 [deploy/README.md](deploy/README.md)。
 
 计算器明确区分三种单位：
 
