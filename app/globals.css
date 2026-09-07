@@ -1147,8 +1147,9 @@ footer a:hover { color: var(--accent); }
 }
 
 @media (max-width: 520px) {
-  .brand { font-size: 17px; }
-  .back-link { border: 0; padding-right: 0; }
+  .brand { font-size: 17px; white-space: nowrap; flex-shrink: 0; }
+  .site-header nav { gap: 10px; }
+  .back-link { border: 0; padding: 9px 0; white-space: nowrap; }
   .eyebrow { font-size: 11px; }
   .intro-copy h1 { letter-spacing: -0.075em; }
   .amount-section > label { font-size: 13px; }
