@@ -28,5 +28,9 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
-      - name: Build
-        run: npm run build
+      - name: Test
+        run: npm test && python3 -m unittest discover -s tests -p 'test_*.py'
+
+      # Production prerendering requires the private source key, held only by Vercel.
+      - name: Compile production build
+        run: npm run build -- --experimental-build-mode compile
