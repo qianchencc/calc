@@ -14,9 +14,16 @@ test('100 balance uses 30 at 2M, 40 at 3M and 30 at 4M: 300M total', () => {
   assert.equal(estimateTokens([{amount:30,multiplier:0.4},{amount:40,multiplier:0.32},{amount:30,multiplier:0.28}], samples).tokenM, 300);
 });
 
-test('missing tier is unavailable rather than zero or a scaled fallback', () => {
+test('completely absent model data is not fabricated', () => {
   assert.equal(estimateTokens([{amount: 10, multiplier: 0.5}], []).tokenM, null);
   assert.equal(estimateTokens([], []).tokenM, 0);
+});
+
+test('missing tier borrows the model pooled yield without scaling the multiplier', () => {
+  const result = estimateTokens([{ amount: 30, multiplier: 0.4 }, { amount: 70, multiplier: 0.28 }],
+    [{multiplier: 0.4, tokenMPerBalance: 2, requests: 100, days: 10, windowEnd: '2026-09-07'}], 3);
+  assert.equal(result.tokenM, 270);
+  assert.deepEqual(result.borrowed, [0.28]);
 });
 
 test('snapshot exposes direct yield without passing billing totals to browser', () => {
@@ -26,7 +33,20 @@ test('snapshot exposes direct yield without passing billing totals to browser', 
   ]};
   const parsed = parseUsageSnapshot(snapshot);
   assert.equal(parsed.models[0].samples[0].tokenMPerBalance, 3);
+  assert.equal(parsed.models[0].pooledYield, 3);
   assert.equal(JSON.stringify(parsed).includes('actual_cost'), false);
   snapshot.models[0].samples[0].actual_cost = 0;
   assert.throws(() => parseUsageSnapshot(snapshot));
+});
+
+test('pooled fallback divides aggregate totals, and only GPT-5.4 is hidden', () => {
+  const samples = [
+    {multiplier:0.4,total_tokens:6000000,actual_cost:2,requests:20,days:2,window_end:'2026-09-07'},
+    {multiplier:0.32,total_tokens:4000000,actual_cost:2,requests:20,days:2,window_end:'2026-09-07'},
+  ];
+  const result = parseUsageSnapshot({version:1,generated_at:'2026-09-07T03:15:00+08:00',models:[
+    {id:'gpt-5.4',label:'GPT-5.4',samples}, {id:'gpt-5.4-mini',label:'Mini',samples},
+  ]});
+  assert.deepEqual(result.models.map(m=>m.id), ['gpt-5.4-mini']);
+  assert.equal(result.models[0].pooledYield,2.5);
 });

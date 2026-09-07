@@ -651,6 +651,15 @@ input[type="number"]::-webkit-outer-spin-button {
   border: 1px solid var(--ink);
 }
 
+.comparison-summary {
+  margin: 16px 0 22px;
+  font-size: 14px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.amount-section > label small { font-size: 12px; font-weight: 400; }
+
 .model-picker button {
   min-height: 48px;
   padding: 10px 8px;
@@ -665,7 +674,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .model-picker button:nth-child(4n) { border-right: 0; }
-.model-picker button:nth-last-child(-n+4) { border-bottom: 0; }
+.model-picker button:nth-last-child(-n+3) { border-bottom: 0; }
 .model-picker button:hover { background: var(--accent-soft); }
 .model-picker button:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 .model-picker button.selected { background: var(--ink); color: var(--paper); box-shadow: inset 0 -4px 0 var(--accent); }
@@ -1116,8 +1125,8 @@ footer a:hover { color: var(--accent); }
   .model-picker { grid-template-columns: repeat(2, 1fr); }
   .model-picker button:nth-child(4n) { border-right: 1px solid var(--line-dark); }
   .model-picker button:nth-child(2n) { border-right: 0; }
-  .model-picker button:nth-last-child(-n+4) { border-bottom: 1px solid var(--line-dark); }
-  .model-picker button:nth-last-child(-n+2) { border-bottom: 0; }
+  .model-picker button:nth-last-child(-n+3) { border-bottom: 1px solid var(--line-dark); }
+  .model-picker button:last-child { border-bottom: 0; }
   .result-values { grid-template-columns: 1fr; gap: 10px; }
   .result-values > i { display: none; }
   .result-values > strong { font-size: 54px; }
