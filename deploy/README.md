@@ -12,6 +12,7 @@ Snapshot: /opt/sub2api-deploy/data/pages/assets/calc-private/latest.json
 Previous successful snapshot: same directory/previous.json
 Latest raw aggregate export: same directory/aggregates.csv (no user identifiers).
 Snapshots contain per-sample window_start and exclusive window_end. The model list is the exporter whitelist; aliases only remove the exact -proxy suffix.
+Claude Opus 5.5 may also carry a separate `reference` from group 43 (`claude kiro`, multiplier 0.70). It is used only when that model has no designated tier samples and is labeled as a cross-group estimate in the UI. The exporter validates that group's identity and platform before publishing.
 
 Rollback: revert the calculator commit; disable calc-usage.timer and restore the backed-up Nginx config after nginx -t. Preserve snapshots and key for recovery. Do not remove unrelated server assets or containers.
 

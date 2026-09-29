@@ -6,7 +6,8 @@ export type TierSample = {
   windowEnd: string;
 };
 
-export type UsageModel = { id: string; label: string; samples: TierSample[]; pooledNeutralYield: number };
+export type ReferenceSample = { multiplier: number; requests: number; days: number; windowEnd: string; tokenMPerBalance: number };
+export type UsageModel = { id: string; label: string; samples: TierSample[]; pooledNeutralYield: number; reference?: ReferenceSample };
 export type UsageData = { generatedAt: string; models: UsageModel[] };
 
 export function shanghaiDate(date = new Date()) {
@@ -73,8 +74,27 @@ export function parseUsageSnapshot(value: unknown): UsageData {
       return { multiplier, tokenMPerBalance, requests: row.requests as number,
         days: row.days as number, windowEnd: row.window_end };
     });
-    return { id: model.id, label: model.label, samples, pooledNeutralYield: neutralCost > 0 ? totalTokens / 1e6 / neutralCost : 0 };
+    let reference: ReferenceSample | undefined;
+    if (model.reference !== undefined) {
+      if (model.id !== 'claude-opus-5-5' || !model.reference || typeof model.reference !== 'object') throw new Error('Invalid reference');
+      const row = model.reference as Record<string, unknown>;
+      if (row.group_id !== 43 || row.multiplier !== 0.7
+          || typeof row.total_tokens !== 'number' || !Number.isFinite(row.total_tokens) || row.total_tokens <= 0
+          || typeof row.actual_cost !== 'number' || !Number.isFinite(row.actual_cost) || row.actual_cost <= 0
+          || typeof row.requests !== 'number' || row.requests < 100
+          || typeof row.days !== 'number' || row.days < 1
+          || typeof row.window_end !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(row.window_end)
+          || !Number.isFinite(Date.parse(row.window_end))) throw new Error('Invalid reference');
+      reference = { multiplier: 0.7, requests: row.requests, days: row.days, windowEnd: row.window_end,
+        tokenMPerBalance: row.total_tokens / 1e6 / row.actual_cost };
+      if (samples.length === 0) {
+        totalTokens = row.total_tokens;
+        neutralCost = row.actual_cost / 0.7;
+      }
+    }
+    return { id: model.id, label: model.label, samples, pooledNeutralYield: neutralCost > 0 ? totalTokens / 1e6 / neutralCost : 0, reference };
   });
-  const visibleModels = ['gpt-6-astra', 'gpt-5.6-terra', 'gpt-5.6-sol', 'gpt-5.6-luna'];
-  return { generatedAt: snapshot.generated_at, models: models.filter((model) => visibleModels.includes(model.id) && model.samples.length > 0) };
+  const visibleModels = ['gpt-6-astra', 'gpt-5.6-terra', 'gpt-5.6-sol', 'gpt-5.6-luna',
+    'gpt-6-luna', 'gpt-6-sol', 'glm-5.3-flash', 'glm-5.3', 'claude-opus-5-5'];
+  return { generatedAt: snapshot.generated_at, models: models.filter((model) => visibleModels.includes(model.id) && (model.samples.length > 0 || model.reference)) };
 }

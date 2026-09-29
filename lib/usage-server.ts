@@ -10,4 +10,4 @@ export const getUsageData = unstable_cache(async () => {
   });
   if (!response.ok) throw new Error(`Usage source HTTP ${response.status}`);
   return parseUsageSnapshot(await response.json());
-}, ['tier-usage-v4-normalized-fallback'], { revalidate: 3600 });
+}, ['tier-usage-v5-five-models'], { revalidate: 3600 });

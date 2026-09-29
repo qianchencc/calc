@@ -144,8 +144,11 @@ export default function Calculator({ usage, today }: { usage: UsageData | null; 
   const estimate = estimateTokens(result.breakdown, selected?.samples ?? [], selected?.pooledNeutralYield);
   const tokenM = !selected || (pricingMode === "tiered" ? !tiersValid : singleMultiplierValue <= 0)
     ? null : estimate.tokenM;
-  const stale = estimate.used.some((row) => Date.parse(currentDate) - Date.parse(row.windowEnd) > 2 * 86400000);
-  const limited = estimate.used.some((row) => row.requests < 100 || row.days < 7);
+  const usesReference = !!(selected?.reference && selected.samples.length === 0);
+  const stale = estimate.used.some((row) => Date.parse(currentDate) - Date.parse(row.windowEnd) > 2 * 86400000)
+    || !!(usesReference && selected?.reference && Date.parse(currentDate) - Date.parse(selected.reference.windowEnd) > 2 * 86400000);
+  const limited = estimate.used.some((row) => row.requests < 100 || row.days < 7)
+    || !!(usesReference && selected?.reference && selected.reference.days < 7);
   const inferredRechargeRate = amountValue > 0 ? stationBalance / amountValue : 0;
   const officialDirectCapacity = officialExchangeRateValue > 0
     ? amountValue / officialExchangeRateValue
@@ -346,10 +349,10 @@ export default function Calculator({ usage, today }: { usage: UsageData | null; 
 
           <div className="model-section">
             <div className="section-heading-row">
-              <h2>选择 GPT 模型</h2>
+              <h2>选择模型</h2>
               <span>{usage ? `每日统计 · 更新于 ${usage.generatedAt.slice(0, 10)}` : "统计数据暂不可用"}</span>
             </div>
-            <div className="model-picker" role="group" aria-label="GPT模型">
+            <div className="model-picker" role="group" aria-label="模型">
               {models.map((model) => (
                 <button
                   type="button"
@@ -362,7 +365,7 @@ export default function Calculator({ usage, today }: { usage: UsageData | null; 
                 </button>
               ))}
             </div>
-            <p className="model-help">按各阶梯分组的总 Token ÷ 实际扣费估算，包含输入、输出和缓存。缺少对应档位时，借用同模型其他阶梯样本，按目标倍率换算作粗略参考；免费模型不参与。</p>
+            <p className="model-help">按各阶梯分组的总 Token ÷ 实际扣费估算，包含输入、输出和缓存。缺档位时借用同模型其他样本按倍率换算；Claude Opus 5.5 缺阶梯实测时借用独立分组样本，仅供粗略参考。</p>
           </div>
 
           <div className="token-result" aria-live="polite">
@@ -375,15 +378,18 @@ export default function Calculator({ usage, today }: { usage: UsageData | null; 
               <i aria-hidden="true" />
               <div>
                 <b>{tokenM === null ? "暂无法估算" : `${(tokenM / 1000).toFixed(2)}B`}</b>
-                <span>{tokenM === null ? estimate.missing.length ? `缺少 ×${estimate.missing.join("、×")} 档有效样本` : "统计不可用或计费参数无效" : "按各档真实使用比例分段估算"}</span>
+                <span>{tokenM === null ? estimate.missing.length ? `缺少 ×${estimate.missing.join("、×")} 档有效样本` : "统计不可用或计费参数无效" : usesReference ? "按跨分组样本和各档倍率推算" : "按各档真实使用比例分段估算"}</span>
               </div>
             </div>
-            <p className="range-note">{stale ? "部分样本已过期，沿用上次有效数据。" : ""}{estimate.borrowed.length > 0 ? `×${estimate.borrowed.join("、×")} 档借用同模型其他阶梯样本，已按倍率换算。` : ""}{limited ? "部分阶梯样本较少，仅供粗略参考。" : "实际可用量会随缓存命中和输出比例变化。"}</p>
+            <p className="range-note">{stale ? "部分样本已过期，沿用上次有效数据。" : ""}{usesReference ? "Claude Opus 5.5 使用 claude kiro 分组样本按倍率推算，非本站阶梯实测。" : estimate.borrowed.length > 0 ? `×${estimate.borrowed.join("、×")} 档借用同模型其他阶梯样本，已按倍率换算。` : ""}{limited ? "样本活跃日较少，仅供粗略参考。" : "实际可用量会随缓存命中和输出比例变化。"}</p>
             <details className="range-note">
-              <summary>各阶梯样本</summary>
+              <summary>{usesReference ? "参考样本来源" : "各阶梯样本"}</summary>
               {(selected?.samples ?? []).map((row) => (
                 <p key={row.multiplier}>×{row.multiplier.toFixed(2)}：约 {row.tokenMPerBalance.toFixed(2)}M / 站内余额；{row.requests.toLocaleString("zh-CN")} 次请求，{row.days} 个活跃日；统计至 {new Date(Date.parse(row.windowEnd) - 86400000).toISOString().slice(0, 10)}</p>
               ))}
+              {usesReference && selected?.reference && (
+                <p>claude kiro ×{selected.reference.multiplier.toFixed(2)} 参考样本：约 {selected.reference.tokenMPerBalance.toFixed(2)}M / 站内余额；{selected.reference.requests.toLocaleString("zh-CN")} 次请求，{selected.reference.days} 个活跃日；统计至 {new Date(Date.parse(selected.reference.windowEnd) - 86400000).toISOString().slice(0, 10)}</p>
+              )}
             </details>
           </div>
 
@@ -524,7 +530,7 @@ export default function Calculator({ usage, today }: { usage: UsageData | null; 
           <article><span>02</span><h3>官方直购基准</h3><p>支付人民币除以真实美元汇率，得到同样金额直接购买官方 API 的容量。</p></article>
           <article><span>03</span><h3>模型 Token 估算</h3><p>用各阶梯真实样本的总 Token 除以实际扣费，再乘以该档余额，逐段相加。</p></article>
         </div>
-        <p className="disclaimer">官方 API 容量和 Plus 对照保留原有价格假设，独立于 Token 估算。Token 样本来自本站指定阶梯分组此前30个完整自然日的付费请求，以总量汇总，可能受高用量用户影响。按本月从零累计消费估算；缺样本或自定义倍率借用同模型其他阶梯样本，先消除原倍率影响，再按目标倍率换算，不代表该倍率下的实测结果。结果仅供参考，并非额度承诺。</p>
+        <p className="disclaimer">官方 API 容量和 Plus 对照保留原有价格假设，独立于 Token 估算。Token 样本主要来自本站指定阶梯分组此前30个完整自然日的付费请求，以总量汇总，可能受高用量用户影响。按本月从零累计消费估算；缺样本或自定义倍率借用同模型其他阶梯样本，先消除原倍率影响，再按目标倍率换算。Claude Opus 5.5 缺阶梯实测时借用独立分组样本，不代表该倍率下的实测结果。结果仅供参考，并非额度承诺。</p>
       </section>
 
       <footer>
