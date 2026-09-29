@@ -13,9 +13,13 @@ import tempfile
 from zoneinfo import ZoneInfo
 
 TIERS = {2: ('default', 0.4), 6: ('tier_1', 0.32), 7: ('tier_2', 0.28), 8: ('tier_3', 0.24)}
+CLAUDE_REFERENCE = (43, 'claude kiro', 0.7, 'anthropic')
 MODELS = {
     'gpt-6-astra': 'GPT-6 Astra', 'gpt-5.6-terra': 'GPT-5.6 Terra',
     'gpt-5.6-sol': 'GPT-5.6 Sol', 'gpt-5.6-luna': 'GPT-5.6 Luna',
+    'gpt-6-luna': 'GPT-6 Luna', 'gpt-6-sol': 'GPT-6 Sol',
+    'glm-5.3-flash': 'GLM-5.3 Flash', 'glm-5.3': 'GLM-5.3',
+    'claude-opus-5-5': 'Claude Opus 5.5',
     'gpt-5.6': 'GPT-5.6', 'gpt-5.5': 'GPT-5.5',
     'gpt-5.4': 'GPT-5.4', 'gpt-5.4-mini': 'GPT-5.4 Mini',
 }
@@ -26,11 +30,17 @@ def make_snapshot(rows, previous, start, end):
     for model, label in MODELS.items():
         old = next((m for m in previous.get('models', []) if m['id'] == model), {})
         samples = {r['group_id']: r for r in old.get('samples', []) if r['group_id'] in TIERS}
+        reference = old.get('reference') if model == 'claude-opus-5-5' else None
         for row in rows:
-            if row['model'] != model or row['group_id'] not in TIERS:
+            if row['model'] != model or (row['group_id'] not in TIERS
+                                         and (model != 'claude-opus-5-5' or row['group_id'] != CLAUDE_REFERENCE[0])):
                 continue
             if not all(math.isfinite(row[k]) and row[k] > 0
                        for k in ('total_tokens', 'actual_cost', 'requests', 'days')):
+                continue
+            if row['group_id'] == CLAUDE_REFERENCE[0]:
+                if row['requests'] >= 100 and row['days'] >= 1 and (not reference or reference['window_end'] <= end):
+                    reference = {**row, 'window_start': start, 'window_end': end}
                 continue
             if row['requests'] < 10 or row['days'] < 2:
                 continue
@@ -38,7 +48,10 @@ def make_snapshot(rows, previous, start, end):
             if old_row and old_row['window_end'] > end:
                 continue
             samples[row['group_id']] = {**row, 'window_start': start, 'window_end': end}
-        models.append({'id': model, 'label': label, 'samples': list(samples.values())})
+        entry = {'id': model, 'label': label, 'samples': list(samples.values())}
+        if reference:
+            entry['reference'] = reference
+        models.append(entry)
     if not any(m['samples'] for m in models):
         raise ValueError('No usable samples; keep previous snapshot')
     return {'version': 1, 'generated_at': datetime.now(ZoneInfo('Asia/Shanghai')).isoformat(),
@@ -69,7 +82,8 @@ def query(start, end):
     ), requests AS (
       SELECT DISTINCT ON (u.api_key_id, COALESCE(NULLIF(u.request_id,''), 'row:' || u.id::text)) u.*
       FROM usage_logs u, bounds b
-      WHERE u.created_at >= b.lo AND u.created_at < b.hi AND u.group_id IN (2,6,7,8)
+      WHERE u.created_at >= b.lo AND u.created_at < b.hi
+        AND (u.group_id IN (2,6,7,8) OR (u.group_id = 43 AND u.model = 'claude-opus-5-5'))
       ORDER BY u.api_key_id, COALESCE(NULLIF(u.request_id,''), 'row:' || u.id::text), u.id DESC
     ), eligible AS (
       SELECT *, regexp_replace(model, '-proxy$', '') AS canonical_model
@@ -86,8 +100,8 @@ def query(start, end):
         sum(actual_cost) AS actual_cost
       FROM eligible WHERE canonical_model IN ({model_names}) GROUP BY group_id,canonical_model
     ) SELECT json_build_object(
-      'groups', (SELECT json_agg(json_build_object('id',id,'name',name,'multiplier',rate_multiplier))
-                 FROM groups WHERE id IN (2,6,7,8) AND deleted_at IS NULL AND status='active'),
+      'groups', (SELECT json_agg(json_build_object('id',id,'name',name,'multiplier',rate_multiplier,'platform',platform))
+                 FROM groups WHERE id IN (2,6,7,8,43) AND deleted_at IS NULL AND status='active'),
       'rows', COALESCE((SELECT json_agg(t) FROM totals t),'[]'::json));
     """
     command = ['docker', 'exec', '-i', 'sub2api-postgres', 'sh', '-c',
@@ -96,9 +110,13 @@ def query(start, end):
     result = subprocess.run(command, input=sql, text=True, capture_output=True, timeout=75, check=True)
     data = json.loads(result.stdout)
     actual = {g['id']: (g['name'], g['multiplier']) for g in data['groups'] or []}
-    if actual != TIERS:
+    if {k: v for k, v in actual.items() if k in TIERS} != TIERS or actual.get(CLAUDE_REFERENCE[0]) != CLAUDE_REFERENCE[1:3]:
         raise ValueError('Production tier mapping changed; refusing to publish')
-    return [{**r, 'group_name': TIERS[r['group_id']][0], 'multiplier': TIERS[r['group_id']][1]}
+    reference = next(g for g in data['groups'] if g['id'] == CLAUDE_REFERENCE[0])
+    if reference.get('platform') != CLAUDE_REFERENCE[3]:
+        raise ValueError('Claude reference group changed; refusing to publish')
+    return [{**r, 'group_name': (TIERS.get(r['group_id']) or CLAUDE_REFERENCE[1:3])[0],
+             'multiplier': (TIERS.get(r['group_id']) or CLAUDE_REFERENCE[1:3])[1]}
             for r in data['rows']]
 
 

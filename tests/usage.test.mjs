@@ -40,15 +40,32 @@ test('snapshot exposes direct yield without passing billing totals to browser', 
   assert.throws(() => parseUsageSnapshot(snapshot));
 });
 
-test('calculator exposes only Astra, Terra, Sol and Luna, preserving pooled yields', () => {
+test('calculator exposes the nine requested models, preserving pooled yields', () => {
   const samples = [
     {multiplier:0.4,total_tokens:6000000,actual_cost:2,requests:20,days:2,window_end:'2026-09-07'},
     {multiplier:0.32,total_tokens:4000000,actual_cost:2,requests:20,days:2,window_end:'2026-09-07'},
   ];
-  const ids = ['gpt-5.4','gpt-5.4-mini','gpt-5.5','gpt-5.6','gpt-6-astra','gpt-5.6-terra','gpt-5.6-sol','gpt-5.6-luna'];
+  const ids = ['gpt-5.4','gpt-5.4-mini','gpt-5.5','gpt-5.6','gpt-6-astra','gpt-5.6-terra','gpt-5.6-sol','gpt-5.6-luna',
+    'gpt-6-luna','gpt-6-sol','glm-5.3-flash','glm-5.3','claude-opus-5-5'];
   const result = parseUsageSnapshot({version:1,generated_at:'2026-09-07T03:15:00+08:00',
     models: ids.map(id => ({id,label:id,samples}))});
-  assert.deepEqual(result.models.map(m=>m.id), ['gpt-6-astra','gpt-5.6-terra','gpt-5.6-sol','gpt-5.6-luna']);
+  assert.deepEqual(result.models.map(m=>m.id), ['gpt-6-astra','gpt-5.6-terra','gpt-5.6-sol','gpt-5.6-luna',
+    'gpt-6-luna','gpt-6-sol','glm-5.3-flash','glm-5.3','claude-opus-5-5']);
   assert.equal(result.models[0].pooledNeutralYield,10 / 11.25);
   assert.equal(estimateTokens([{amount:9,multiplier:0.2}], result.models[0].samples, result.models[0].pooledNeutralYield).tokenM,40);
+});
+
+test('Claude reference estimates missing tiers without claiming tier samples', () => {
+  const parsed = parseUsageSnapshot({version:1,generated_at:'2026-09-29T03:15:00+08:00',models:[
+    {id:'claude-opus-5-5',label:'Claude Opus 5.5',samples:[],reference:{group_id:43,multiplier:0.7,
+      total_tokens:11536494,actual_cost:22.618503,requests:141,days:1,window_end:'2026-09-29'}},
+  ]});
+  const model = parsed.models[0];
+  assert.equal(model.samples.length, 0);
+  assert.equal(model.reference.requests, 141);
+  assert.equal(JSON.stringify(parsed).includes('actual_cost'), false);
+  const estimate = estimateTokens([{amount:30,multiplier:0.4},{amount:40,multiplier:0.32},{amount:30,multiplier:0.28}],
+    model.samples,model.pooledNeutralYield);
+  assert.ok(estimate.tokenM > 0);
+  assert.deepEqual(estimate.borrowed, [0.4,0.32,0.28]);
 });

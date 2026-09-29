@@ -30,6 +30,18 @@ class ExportTest(unittest.TestCase):
         astra = next(m for m in result['models'] if m['id'] == 'gpt-6-astra')
         self.assertEqual(astra['samples'][0]['window_end'], '2026-09-06')
 
+    def test_claude_reference_is_not_published_as_a_tier_sample(self):
+        rows = [{'model': 'claude-opus-5-5', 'group_id': 43, 'requests': 141, 'days': 1,
+                 'total_tokens': 11536494, 'actual_cost': 22.618503, 'multiplier': 0.7},
+                {'model': 'gpt-6-sol', 'group_id': 2, 'requests': 20, 'days': 2,
+                 'total_tokens': 6000000, 'actual_cost': 2, 'multiplier': 0.4}]
+        result = exporter.make_snapshot(rows, {}, '2026-08-30', '2026-09-29')
+        claude = next(m for m in result['models'] if m['id'] == 'claude-opus-5-5')
+        self.assertEqual(claude['samples'], [])
+        self.assertEqual(claude['reference']['group_id'], 43)
+        self.assertEqual(claude['reference']['window_end'], '2026-09-29')
+        self.assertNotIn('reference', next(m for m in result['models'] if m['id'] == 'gpt-6-sol'))
+
 
 if __name__ == '__main__':
     unittest.main()
